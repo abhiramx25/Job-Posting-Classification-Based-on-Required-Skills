@@ -24,24 +24,56 @@ model = load_model()
 
 st.title("Job Posting Clustering")
 
-uploaded_file = st.file_uploader("Upload CSV file", type=['csv'])
-if uploaded_file is not None:
-    try:
-        df = pd.read_csv(uploaded_file)
-    except Exception as e:
-        st.error(f"Error reading CSV: {e}")
-    else:
-        if 'job_description' not in df.columns:
-            st.error("CSV must contain a 'job_description' column.")
-        else:
-            df['processed_text'] = df['job_description'].apply(TextPreprocessor.preprocess)
+# Create tabs for different input methods
+tab1, tab2 = st.tabs(["Upload CSV", "Enter Text"])
 
+with tab1:
+    st.header("Upload CSV File")
+    uploaded_file = st.file_uploader("Choose a CSV file", type=['csv'], key="file_uploader")
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)
+        except Exception as e:
+            st.error(f"Error reading CSV: {e}")
+        else:
+            if 'job_description' not in df.columns:
+                st.error("CSV must contain a 'job_description' column.")
+            else:
+                df['processed_text'] = df['job_description'].apply(TextPreprocessor.preprocess)
+                try:
+                    clusters = model.predict(df['processed_text'])
+                    df['cluster'] = clusters
+                    st.write("Clustering Results:")
+                    st.write(df[['job_description', 'cluster']])
+                    
+                    # Add download button for results
+                    csv = df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        "Download Results",
+                        csv,
+                        "job_clustering_results.csv",
+                        "text/csv",
+                        key='download-csv'
+                    )
+                except Exception as e:
+                    st.error(f"Error during clustering: {e}")
+    else:
+        st.info("Please upload a CSV file containing job postings with a 'job_description' column.")
+
+with tab2:
+    st.header("Enter Job Description")
+    user_input = st.text_area("Paste the job description here:", height=200)
+    
+    if st.button("Classify Text"):
+        if user_input.strip() == "":
+            st.warning("Please enter a job description")
+        else:
+            processed_text = TextPreprocessor.preprocess(user_input)
             try:
-                # If your model expects raw text (like a pipeline with vectorizer), this works:
-                clusters = model.predict(df['processed_text'])
-                df['cluster'] = clusters
-                st.write(df[['job_description', 'cluster']])
+                cluster = model.predict([processed_text])[0]
+                st.write("## Classification Result")
+                st.write(f"**Cluster:** {cluster}")
+                st.write("**Processed Text:**")
+                st.write(processed_text)
             except Exception as e:
-                st.error(f"Error during clustering: {e}")
-else:
-    st.info("Please upload a CSV file containing job postings with a 'job_description' column.")
+                st.error(f"Error during classification: {e}")
