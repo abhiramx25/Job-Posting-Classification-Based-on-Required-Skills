@@ -1,44 +1,44 @@
 import streamlit as st
 import pandas as pd
 import pickle
-from your_script_name import TextPreprocessor  # Replace with your actual script name if needed
+import re
 
-# Load model
+# Define your TextPreprocessor class here
+class TextPreprocessor:
+    @staticmethod
+    def preprocess(text):
+        # Example preprocessing: lowercase and remove non-alphanumeric characters
+        text = text.lower()
+        text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
+        return text
+
+# Load the model
 @st.cache_resource
 def load_model():
     with open('job_clustering_model.pkl', 'rb') as f:
-        data = pickle.load(f)
-    return data['vectorizer'], data['model'], data['cluster_descriptions']
+        model = pickle.load(f)
+    return model
 
-vectorizer, model, cluster_descriptions = load_model()
+model = load_model()
 
-# Title
-st.title("Job Recommendation Based on Skills")
+st.title("Job Posting Clustering")
 
-# Input
-user_skills = st.text_input("Enter your skills (comma separated)", "python, machine learning, statistics")
+# Upload or read your data
+uploaded_file = st.file_uploader("job_postings.csv", type=['csv'])
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
 
-if st.button("Find Jobs"):
-    if user_skills:
-        # Preprocess and predict
-        preprocessed = TextPreprocessor.preprocess(user_skills)
-        vector = vectorizer.transform([preprocessed])
-        cluster = model.predict(vector)[0]
-        description = ", ".join(cluster_descriptions[cluster])
+    # Example: preprocess a text column before clustering
+    if 'job_description' in df.columns:
+        df['processed_text'] = df['job_description'].apply(TextPreprocessor.preprocess)
+        
+        # Here you would apply your model prediction/clustering
+        # For example:
+        clusters = model.predict(df['processed_text'])  # adjust depending on your model input
+        
+        df['cluster'] = clusters
+        
+        st.write(df[['job_description', 'cluster']])
 
-        st.success(f"Recommended Cluster: {cluster}")
-        st.write(f"Top Skills in this cluster: {description}")
-
-        # Load job data
-        try:
-            jobs_df = pd.read_csv("job_postings.csv")
-            jobs_df['processed_skills'] = jobs_df['skills'].apply(TextPreprocessor.preprocess)
-            jobs_df['cluster'] = model.predict(vectorizer.transform(jobs_df['processed_skills']))
-
-            matched_jobs = jobs_df[jobs_df['cluster'] == cluster]
-            st.subheader(f"Top Matching Jobs ({len(matched_jobs)})")
-            st.dataframe(matched_jobs[['title', 'company', 'skills']].head(10))
-        except Exception as e:
-            st.error(f"Error loading jobs: {e}")
-    else:
-        st.warning("Please enter your skills.")
+else:
+    st.write("Please upload a CSV file containing job postings.")
