@@ -11,10 +11,3 @@ This project automatically scrapes job listings from [Karkidi.com], clusters the
 - Saves trained model in `.pkl` file
 - Optional Streamlit app interface
 
-## How to Use
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/your-username/job-monitor.git
-cd job-monitor
